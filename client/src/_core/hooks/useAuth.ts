@@ -52,15 +52,27 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
+    let localUser = null;
+    try {
+      const raw = localStorage.getItem("manus-runtime-user-info");
+      if (raw && raw !== "undefined" && raw !== "null") {
+        localUser = JSON.parse(raw);
+      }
+    } catch {}
+
+    const currentUser = meQuery.data || localUser || null;
+
+    if (meQuery.data) {
+      try {
+        localStorage.setItem("manus-runtime-user-info", JSON.stringify(meQuery.data));
+      } catch {}
+    }
+
     return {
-      user: meQuery.data ?? null,
-      loading: meQuery.isLoading || logoutMutation.isPending,
+      user: currentUser,
+      loading: (meQuery.isLoading && !currentUser) || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
-      isAuthenticated: Boolean(meQuery.data),
+      isAuthenticated: Boolean(currentUser),
     };
   }, [
     meQuery.data,
