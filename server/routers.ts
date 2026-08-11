@@ -16,7 +16,32 @@ export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(async opts => {
+      if (opts.ctx.user) return opts.ctx.user;
+      const authHeader = opts.ctx.req.headers.authorization;
+      if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.slice(7).trim();
+        const session = await sdk.verifySession(token);
+        if (session) {
+          try {
+            const user = await db.getUserByOpenId(session.openId);
+            if (user) return user;
+          } catch {}
+          return {
+            id: 1,
+            openId: session.openId,
+            name: session.name || "成員",
+            email: null,
+            loginMethod: "direct",
+            role: "user" as const,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            lastSignedIn: new Date(),
+          };
+        }
+      }
+      return null;
+    }),
     teamRoster: publicProcedure.query(() => db.getTeamMembers()),
     loginAsMember: publicProcedure
       .input(

@@ -17,8 +17,9 @@ export function useAuth(options?: UseAuthOptions) {
   const utils = trpc.useUtils();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
-    retry: false,
+    retry: 1,
     refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({
@@ -28,6 +29,12 @@ export function useAuth(options?: UseAuthOptions) {
   });
 
   const logout = useCallback(async () => {
+    try {
+      sessionStorage.removeItem("manus-cookie");
+      localStorage.removeItem("manus-cookie");
+      localStorage.removeItem("manus-user-session-token");
+      localStorage.removeItem("manus-runtime-user-info");
+    } catch {}
     try {
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
@@ -39,12 +46,6 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
-      // Clear the Preview auto-login token mirrored into sessionStorage, so
-      // header-based sessions (Safari ITP / WebView) are logged out too. The
-      // backend cookie is cleared by the logout mutation.
-      try {
-        sessionStorage.removeItem("manus-cookie");
-      } catch {}
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }
