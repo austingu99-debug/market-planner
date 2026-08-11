@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { editionLabel } from "@/lib/edition";
 import {
   CATEGORY_COLORS,
+  CATEGORY_CODES,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
   categoryCode,
