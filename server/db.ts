@@ -45,6 +45,8 @@ export type TaskWithAssignee = {
 const DEFAULT_DATABASE_URL =
   "mysql://31PBZEhPFXLyVbp.e2a108d9e1ae:7HLuq0091df4UYaLpALp@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/Es4BvchFRGcgYYcUzKQNbt?ssl={\"rejectUnauthorized\":true}";
 
+let _db: ReturnType<typeof drizzle> | null = null;
+
 // Lazily create the drizzle instance so local tooling can run with fallback.
 export async function getDb() {
   const dbUrl = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
