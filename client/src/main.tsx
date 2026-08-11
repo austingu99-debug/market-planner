@@ -52,7 +52,7 @@ const trpcClient = trpc.createClient({
           if (raw) {
             const prefix = `${COOKIE_NAME}=`;
             const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
-            const token = pair?.trim().slice(prefix.length);
+            const token = pair ? pair.trim().slice(prefix.length) : raw;
             if (token) {
               return { Authorization: `Bearer ${token}` };
             }

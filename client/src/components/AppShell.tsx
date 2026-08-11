@@ -56,6 +56,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const loginMutation = trpc.auth.loginAsMember.useMutation({
     onSuccess: loggedInUser => {
       toast.success(`歡迎回來，${loggedInUser.name || "成員"}！`);
+      if ((loggedInUser as any).sessionToken) {
+        try {
+          sessionStorage.setItem("manus-cookie", `manus-session=${(loggedInUser as any).sessionToken}`);
+        } catch {}
+      }
+      utils.auth.me.setData(undefined, loggedInUser as any);
       utils.auth.me.invalidate();
       utils.tasks.list.invalidate();
       utils.editions.active.invalidate();
