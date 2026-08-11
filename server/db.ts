@@ -640,7 +640,16 @@ export async function updateAppSettings(data: {
   if (data.marketEventName !== undefined) updateData.marketEventName = data.marketEventName;
 
   if (Object.keys(updateData).length > 0) {
-    await db.update(appSettings).set(updateData).where(eq(appSettings.id, 1));
+    const existing = await getAppSettings();
+    if (!existing) {
+      await db.insert(appSettings).values({
+        id: 1,
+        marketEventDate: data.marketEventDate ?? null,
+        marketEventName: data.marketEventName ?? null,
+      });
+    } else {
+      await db.update(appSettings).set(updateData).where(eq(appSettings.id, 1));
+    }
   }
 }
 
@@ -1006,51 +1015,5 @@ export async function seedOfficialTimeline(editionId?: number | null, createdByI
   }
 
   return OFFICIAL_TIMELINE_TASKS.length;
-}
-
-export const MAX_TEAM_MEMBERS = 4;
-
-export async function getTeamMembers() {
-  const db = await getDb();
-  if (!db) return [];
-  const all = await db.select().from(users).orderBy(asc(users.id)).limit(MAX_TEAM_MEMBERS);
-  return all;
-}
-
-export async function isRosterMember(userId: number): Promise<boolean> {
-  const members = await getTeamMembers();
-  return members.some(m => m.id === userId);
-}
-
-export async function getAppSettings() {
-  const db = await getDb();
-  if (!db) return null;
-  const result = await db.select().from(appSettings).where(eq(appSettings.id, 1)).limit(1);
-  return result.length > 0 ? result[0] : null;
-}
-
-export async function updateAppSettings(data: {
-  marketEventDate?: Date | null;
-  marketEventName?: string | null;
-}) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
-  const updateData: Record<string, unknown> = {};
-  if (data.marketEventDate !== undefined) updateData.marketEventDate = data.marketEventDate;
-  if (data.marketEventName !== undefined) updateData.marketEventName = data.marketEventName;
-
-  if (Object.keys(updateData).length > 0) {
-    const existing = await getAppSettings();
-    if (!existing) {
-      await db.insert(appSettings).values({
-        id: 1,
-        marketEventDate: data.marketEventDate ?? null,
-        marketEventName: data.marketEventName ?? null,
-      });
-    } else {
-      await db.update(appSettings).set(updateData).where(eq(appSettings.id, 1));
-    }
-  }
 }
 
