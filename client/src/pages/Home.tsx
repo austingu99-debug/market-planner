@@ -104,7 +104,7 @@ export default function Home() {
       setDialogOpen(false);
       invalidateAll();
     },
-    onError: () => toast.error("新增失敗，請再試一次"),
+    onError: err => toast.error(err.message || "新增失敗，請再試一次"),
   });
 
   const updateTask = trpc.tasks.update.useMutation({
@@ -113,7 +113,7 @@ export default function Home() {
       setDialogOpen(false);
       invalidateAll();
     },
-    onError: () => toast.error("更新失敗，請再試一次"),
+    onError: err => toast.error(err.message || "更新失敗，請再試一次"),
   });
 
   const deleteTask = trpc.tasks.delete.useMutation({
@@ -121,7 +121,7 @@ export default function Home() {
       toast.success("任務已刪除");
       invalidateAll();
     },
-    onError: () => toast.error("刪除失敗，請再試一次"),
+    onError: err => toast.error(err.message || "刪除失敗，請再試一次"),
   });
 
   const allTasks = tasksQuery.data ?? [];
