@@ -523,7 +523,7 @@ export default function Home() {
                   ✨ 只看我的任務
                 </DropdownMenuItem>
               )}
-              {members.map(m => (
+              {(members ?? []).map(m => (
                 <DropdownMenuItem key={m.id} onClick={() => setSelectedAssignee(m.id)}>
                   {m.name || `成員 #${m.id}`}
                 </DropdownMenuItem>

@@ -393,7 +393,7 @@ export default function Timeline() {
               <DropdownMenuItem onClick={() => setSelectedAssignee("all")}>
                 全部成員
               </DropdownMenuItem>
-              {members.map(m => (
+              {(members ?? []).map(m => (
                 <DropdownMenuItem key={m.id} onClick={() => setSelectedAssignee(m.id)}>
                   {m.name || `成員 #${m.id}`}
                 </DropdownMenuItem>
