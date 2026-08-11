@@ -146,11 +146,28 @@ export type Task = typeof tasks.$inferSelect;
 export type InsertTask = typeof tasks.$inferInsert;
 
 /**
- * Shared AI consultation log — every member sees the same conversation,
- * so answers benefit the whole team.
+ * AI consultation personas for the 4 team specialties:
+ * - curation: 總策展與法律財務
+ * - design: 美學與場域設計
+ * - vendor: 招商與攤商關係
+ * - marketing: 行銷與數位公關
+ */
+export const AI_PERSONAS = ["curation", "design", "vendor", "marketing"] as const;
+export type AiPersona = (typeof AI_PERSONAS)[number];
+
+export const AI_PERSONA_LABELS: Record<AiPersona, string> = {
+  curation: "總策展與財務顧問",
+  design: "美學與場域顧問",
+  vendor: "招商與攤商顧問",
+  marketing: "行銷與公關顧問",
+};
+
+/**
+ * Shared AI consultation log — supports 4 independent personas/boxes.
  */
 export const aiMessages = mysqlTable("ai_messages", {
   id: int("id").autoincrement().primaryKey(),
+  persona: mysqlEnum("persona", [...AI_PERSONAS]).default("curation").notNull(),
   role: mysqlEnum("role", ["user", "assistant"]).notNull(),
   content: text("content").notNull(),
   authorId: int("author_id"),

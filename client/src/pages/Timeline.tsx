@@ -4,7 +4,7 @@ import { editionLabel } from "@/lib/edition";
 import { categoryLabel, daysUntil } from "@/lib/taskMeta";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Link2, Paperclip, User } from "lucide-react";
+import { CheckCircle2, ChevronDown, Link2, Paperclip, Sparkles, User } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { TaskStatus } from "../../../drizzle/schema";
@@ -39,6 +39,14 @@ export default function Timeline() {
   const utils = trpc.useUtils();
   const [view, setView] = useState<ViewMode>("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expandedDoneMonths, setExpandedDoneMonths] = useState<Record<string, boolean>>({});
+
+  const toggleDoneMonth = (key: string, defaultExpanded: boolean) => {
+    setExpandedDoneMonths(prev => {
+      const current = prev[key] !== undefined ? prev[key] : defaultExpanded;
+      return { ...prev, [key]: !current };
+    });
+  };
 
   const activeQuery = trpc.editions.active.useQuery();
   const edition = activeQuery.data;
@@ -173,10 +181,121 @@ export default function Timeline() {
           {months.map(([key, group]) => {
             const isEventMonth = eventMonth === key;
             const isCurrent = currentMonth === key;
-            const doneCount = group.filter(t => t.status === "done").length;
+            const activeTasks = group.filter(t => t.status !== "done");
+            const doneTasks = group.filter(t => t.status === "done");
+            const defaultExpanded = activeTasks.length === 0;
+            const isDoneExpanded =
+              expandedDoneMonths[key] !== undefined ? expandedDoneMonths[key] : defaultExpanded;
+
+            const renderTaskRow = (t: typeof group[number]) => {
+              const days = daysUntil(t.dueDate);
+              const overdue = days !== null && days < 0 && t.status !== "done";
+              const soon = days !== null && days >= 0 && days <= 7 && t.status !== "done";
+              const open = expanded.has(t.id);
+              const hasDetail = Boolean(
+                t.description || t.notes || t.cloudLink || t.attachmentCount > 0
+              );
+
+              return (
+                <div key={t.id} className="py-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => hasDetail && toggle(t.id)}
+                      className={cn(
+                        "min-w-0 flex-1 text-left",
+                        hasDetail && "cursor-pointer"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="shrink-0 text-[0.6875rem] font-medium tracking-[0.04em] text-muted-foreground">
+                          {categoryLabel(t.category, t.customCategory)}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 text-[0.6875rem] tabular-nums",
+                            overdue
+                              ? "font-semibold text-destructive"
+                              : soon
+                                ? "font-medium text-status-progress-fg"
+                                : "text-muted-foreground/70"
+                          )}
+                        >
+                          {t.dueDate
+                            ? `${new Date(t.dueDate).getMonth() + 1}/${new Date(t.dueDate).getDate()}`
+                            : ""}
+                          {overdue && " 逾期"}
+                        </span>
+                        {hasDetail && (
+                          <ChevronDown
+                            className={cn(
+                              "size-3 shrink-0 text-muted-foreground/60 transition-transform duration-200",
+                              open && "rotate-180"
+                            )}
+                          />
+                        )}
+                      </div>
+                      <p
+                        className={cn(
+                          "mt-0.5 truncate text-[0.9375rem] font-medium leading-snug",
+                          t.status === "done" && "text-muted-foreground"
+                        )}
+                      >
+                        {t.title}
+                      </p>
+                    </button>
+
+                    <StatusPill
+                      status={t.status}
+                      size="sm"
+                      onClick={() => cycleStatus.mutate({ id: t.id })}
+                    />
+                  </div>
+
+                  {open && (
+                    <div className="mt-2.5 space-y-2 rounded-lg bg-secondary/30 px-3.5 py-3 text-sm">
+                      {t.description && (
+                        <p className="leading-relaxed text-muted-foreground">
+                          {t.description}
+                        </p>
+                      )}
+                      {t.notes && (
+                        <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
+                          {t.notes}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        {t.assigneeName && (
+                          <span className="inline-flex items-center gap-1">
+                            <User className="size-3" />
+                            {t.assigneeName}
+                          </span>
+                        )}
+                        {t.cloudLink && (
+                          <a
+                            href={t.cloudLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 underline-offset-2 hover:text-foreground hover:underline"
+                          >
+                            <Link2 className="size-3" />
+                            雲端連結
+                          </a>
+                        )}
+                        {t.attachmentCount > 0 && (
+                          <span className="inline-flex items-center gap-1 tabular-nums">
+                            <Paperclip className="size-3" />
+                            {t.attachmentCount} 個附件
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            };
 
             return (
-              <section key={key}>
+              <section key={key} className="space-y-3">
                 {/* Month header */}
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border pb-2">
                   <h2
@@ -188,8 +307,13 @@ export default function Timeline() {
                     {monthTitle(key)}
                   </h2>
                   <span className="text-xs text-muted-foreground tabular-nums">
-                    {doneCount}/{group.length} 完成
+                    {doneTasks.length}/{group.length} 完成
                   </span>
+                  {activeTasks.length > 0 && (
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[0.6875rem] font-medium text-secondary-foreground">
+                      待辦 {activeTasks.length}
+                    </span>
+                  )}
                   {isCurrent && (
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-[0.6875rem] font-medium text-secondary-foreground">
                       本月
@@ -202,115 +326,51 @@ export default function Timeline() {
                   )}
                 </div>
 
-                {/* Rows — quiet by default */}
-                <div className="divide-y divide-border/60">
-                  {group.map(t => {
-                    const days = daysUntil(t.dueDate);
-                    const overdue = days !== null && days < 0 && t.status !== "done";
-                    const soon = days !== null && days >= 0 && days <= 7 && t.status !== "done";
-                    const open = expanded.has(t.id);
-                    const hasDetail = Boolean(
-                      t.description || t.notes || t.cloudLink || t.attachmentCount > 0
-                    );
+                {/* 1. Active Tasks for this month */}
+                {activeTasks.length > 0 ? (
+                  <div className="divide-y divide-border/60">
+                    {activeTasks.map(renderTaskRow)}
+                  </div>
+                ) : doneTasks.length > 0 ? (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-status-done/40 bg-status-done/15 px-4 py-3 text-xs text-status-done-fg">
+                    <Sparkles className="h-4 w-4 shrink-0 text-status-done-fg" />
+                    <span className="font-medium">本月所有任務皆已完成！</span>
+                  </div>
+                ) : null}
 
-                    return (
-                      <div key={t.id} className="py-3">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => hasDetail && toggle(t.id)}
-                            className={cn(
-                              "min-w-0 flex-1 text-left",
-                              hasDetail && "cursor-pointer"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="shrink-0 text-[0.6875rem] font-medium tracking-[0.04em] text-muted-foreground">
-                                {categoryLabel(t.category, t.customCategory)}
-                              </span>
-                              <span
-                                className={cn(
-                                  "shrink-0 text-[0.6875rem] tabular-nums",
-                                  overdue
-                                    ? "font-semibold text-destructive"
-                                    : soon
-                                      ? "font-medium text-status-progress-fg"
-                                      : "text-muted-foreground/70"
-                                )}
-                              >
-                                {t.dueDate
-                                  ? `${new Date(t.dueDate).getMonth() + 1}/${new Date(t.dueDate).getDate()}`
-                                  : ""}
-                                {overdue && " 逾期"}
-                              </span>
-                              {hasDetail && (
-                                <ChevronDown
-                                  className={cn(
-                                    "size-3 shrink-0 text-muted-foreground/60 transition-transform duration-200",
-                                    open && "rotate-180"
-                                  )}
-                                />
-                              )}
-                            </div>
-                            <p
-                              className={cn(
-                                "mt-0.5 truncate text-[0.9375rem] font-medium leading-snug",
-                                t.status === "done" && "text-muted-foreground"
-                              )}
-                            >
-                              {t.title}
-                            </p>
-                          </button>
+                {/* 2. Collapsible Completed Tasks for this month */}
+                {doneTasks.length > 0 && (
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleDoneMonth(key, defaultExpanded)}
+                      className="tap-target group flex w-full items-center justify-between rounded-xl border border-border/50 bg-card/50 px-3.5 py-2 text-left text-xs font-medium text-muted-foreground transition-all hover:bg-accent/40 hover:text-foreground"
+                    >
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-status-done-fg" />
+                        <span className="font-medium text-foreground/90">本月已完成</span>
+                        <span className="rounded-full bg-status-done/80 px-2 py-0.5 text-[0.6875rem] font-semibold text-status-done-fg tabular-nums">
+                          {doneTasks.length} 項
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground/75 group-hover:text-foreground">
+                        <span>{isDoneExpanded ? "收合" : "展開查看"}</span>
+                        <ChevronDown
+                          className={cn(
+                            "h-3.5 w-3.5 transition-transform duration-200",
+                            isDoneExpanded && "rotate-180"
+                          )}
+                        />
+                      </span>
+                    </button>
 
-                          <StatusPill
-                            status={t.status}
-                            size="sm"
-                            onClick={() => cycleStatus.mutate({ id: t.id })}
-                          />
-                        </div>
-
-                        {open && (
-                          <div className="mt-2.5 space-y-2 rounded-lg bg-secondary/30 px-3.5 py-3 text-sm">
-                            {t.description && (
-                              <p className="leading-relaxed text-muted-foreground">
-                                {t.description}
-                              </p>
-                            )}
-                            {t.notes && (
-                              <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">
-                                {t.notes}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                              {t.assigneeName && (
-                                <span className="inline-flex items-center gap-1">
-                                  <User className="size-3" />
-                                  {t.assigneeName}
-                                </span>
-                              )}
-                              {t.cloudLink && (
-                                <a
-                                  href={t.cloudLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1 underline-offset-2 hover:text-foreground hover:underline"
-                                >
-                                  <Link2 className="size-3" />
-                                  雲端連結
-                                </a>
-                              )}
-                              {t.attachmentCount > 0 && (
-                                <span className="inline-flex items-center gap-1 tabular-nums">
-                                  <Paperclip className="size-3" />
-                                  {t.attachmentCount} 個附件
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                    {isDoneExpanded && (
+                      <div className="mt-1 divide-y divide-border/40 pl-1 opacity-80">
+                        {doneTasks.map(renderTaskRow)}
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
+                  </div>
+                )}
               </section>
             );
           })}

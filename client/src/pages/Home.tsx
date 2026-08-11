@@ -12,7 +12,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { editionLabel } from "@/lib/edition";
-import { Plus } from "lucide-react";
+import { CheckCircle2, ChevronDown, CheckCheck, Plus, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { TaskStatus } from "../../../drizzle/schema";
@@ -26,6 +26,22 @@ export default function Home() {
   const [view, setView] = useState<ViewMode>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TaskFormValues | null>(null);
+  const [expandedDone, setExpandedDone] = useState<Record<string, boolean>>({});
+
+  const toggleDoneCategory = (cat: string, defaultExpanded: boolean) => {
+    setExpandedDone(prev => {
+      const current = prev[cat] !== undefined ? prev[cat] : defaultExpanded;
+      return { ...prev, [cat]: !current };
+    });
+  };
+
+  const setAllDone = (expand: boolean) => {
+    const next: Record<string, boolean> = {};
+    for (const cat of CATEGORY_ORDER) {
+      next[cat] = expand;
+    }
+    setExpandedDone(next);
+  };
 
   const activeQuery = trpc.editions.active.useQuery();
   const edition = activeQuery.data;
@@ -282,10 +298,45 @@ export default function Home() {
           ))}
         </div>
 
-        <Button onClick={openCreate} className="h-10 tap-target">
-          <Plus className="mr-1.5 h-4 w-4" />
-          新增
-        </Button>
+        <div className="flex items-center gap-2">
+          {visibleTasks.some(t => t.status === "done") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const anyExpanded = CATEGORY_ORDER.some(cat => {
+                  const hasActive = (grouped.get(cat) ?? []).some(t => t.status !== "done");
+                  return expandedDone[cat] !== undefined ? expandedDone[cat] : !hasActive;
+                });
+                setAllDone(!anyExpanded);
+              }}
+              className="h-9 gap-1.5 rounded-full px-3 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <CheckCheck className="h-3.5 w-3.5 text-status-done-fg" />
+              <span className="hidden sm:inline">
+                {CATEGORY_ORDER.some(cat => {
+                  const hasActive = (grouped.get(cat) ?? []).some(t => t.status !== "done");
+                  return expandedDone[cat] !== undefined ? expandedDone[cat] : !hasActive;
+                })
+                  ? "全部收合已完成"
+                  : "全部展開已完成"}
+              </span>
+              <span className="sm:hidden">
+                {CATEGORY_ORDER.some(cat => {
+                  const hasActive = (grouped.get(cat) ?? []).some(t => t.status !== "done");
+                  return expandedDone[cat] !== undefined ? expandedDone[cat] : !hasActive;
+                })
+                  ? "收合完成"
+                  : "展開完成"}
+              </span>
+            </Button>
+          )}
+
+          <Button onClick={openCreate} className="h-10 tap-target">
+            <Plus className="mr-1.5 h-4 w-4" />
+            新增
+          </Button>
+        </div>
       </section>
 
       {/* Category sections */}
@@ -326,31 +377,100 @@ export default function Home() {
             const rows = grouped.get(cat) ?? [];
             if (rows.length === 0) return null;
             const s = stats?.byCategory[cat];
+
+            const activeRows = rows.filter(t => t.status !== "done");
+            const doneRows = rows.filter(t => t.status === "done");
+            const defaultExpanded = activeRows.length === 0;
+            const isExpanded =
+              expandedDone[cat] !== undefined ? expandedDone[cat] : defaultExpanded;
+
             return (
-              <section key={cat}>
-                <div className="mb-3 flex items-baseline justify-between gap-3">
-                  <h2 className="font-serif text-xl font-bold tracking-tight">
-                    {CATEGORY_LABELS[cat]}
-                  </h2>
+              <section key={cat} className="space-y-3">
+                {/* Category Header */}
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="font-serif text-xl font-bold tracking-tight">
+                      {CATEGORY_LABELS[cat]}
+                    </h2>
+                    {activeRows.length > 0 && (
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[0.6875rem] font-medium text-secondary-foreground tabular-nums">
+                        待辦 {activeRows.length}
+                      </span>
+                    )}
+                  </div>
                   {s && s.total > 0 && (
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {s.percentage}% 完成
+                      {s.percentage}% 完成（{s.done}/{s.total}）
                     </span>
                   )}
                 </div>
-                <div className="overflow-hidden rounded-xl border border-border/70 divide-y divide-border/70">
-                  {rows.map(task => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      showCategory={false}
-                      onCycleStatus={id => cycleStatus.mutate({ id })}
-                      onSetStatus={(id, status) => setStatus.mutate({ id, status })}
-                      onEdit={openEdit}
-                      onDelete={id => deleteTask.mutate({ id })}
-                    />
-                  ))}
-                </div>
+
+                {/* 1. Main Screen: Active / Pending Tasks */}
+                {activeRows.length > 0 ? (
+                  <div className="overflow-hidden rounded-xl border border-border/70 divide-y divide-border/70 bg-card">
+                    {activeRows.map(task => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        showCategory={false}
+                        onCycleStatus={id => cycleStatus.mutate({ id })}
+                        onSetStatus={(id, status) => setStatus.mutate({ id, status })}
+                        onEdit={openEdit}
+                        onDelete={id => deleteTask.mutate({ id })}
+                      />
+                    ))}
+                  </div>
+                ) : doneRows.length > 0 ? (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-status-done/40 bg-status-done/15 px-4 py-3.5 text-sm text-status-done-fg">
+                    <Sparkles className="h-4 w-4 shrink-0 text-status-done-fg" />
+                    <span className="font-medium">本組待辦事項皆已完成！</span>
+                    <span className="text-xs opacity-80 tabular-nums">（共 {doneRows.length} 項）</span>
+                  </div>
+                ) : null}
+
+                {/* 2. Hierarchical Collapsible Completed Tasks */}
+                {doneRows.length > 0 && (
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleDoneCategory(cat, defaultExpanded)}
+                      className="tap-target group flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/60 px-4 py-2.5 text-left text-xs font-medium text-muted-foreground transition-all hover:bg-accent/40 hover:text-foreground"
+                    >
+                      <span className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-status-done-fg" />
+                        <span className="font-medium text-foreground/90">已完成項目</span>
+                        <span className="rounded-full bg-status-done/80 px-2 py-0.5 text-[0.6875rem] font-semibold text-status-done-fg tabular-nums">
+                          {doneRows.length} 項
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground/75 group-hover:text-foreground">
+                        <span>{isExpanded ? "點擊收合" : "點擊展開"}</span>
+                        <ChevronDown
+                          className={cn(
+                            "h-3.5 w-3.5 transition-transform duration-200",
+                            isExpanded && "rotate-180"
+                          )}
+                        />
+                      </span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="mt-2 overflow-hidden rounded-xl border border-border/50 bg-card/45 divide-y divide-border/50 opacity-90 transition-all">
+                        {doneRows.map(task => (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            showCategory={false}
+                            onCycleStatus={id => cycleStatus.mutate({ id })}
+                            onSetStatus={(id, status) => setStatus.mutate({ id, status })}
+                            onEdit={openEdit}
+                            onDelete={id => deleteTask.mutate({ id })}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
             );
           })}

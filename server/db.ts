@@ -10,6 +10,8 @@ import {
   taskAttachments,
   tasks,
   TASK_CATEGORIES,
+  AI_PERSONAS,
+  type AiPersona,
   type ResourceKind,
   type TaskCategory,
   type TaskStatus,
@@ -665,6 +667,7 @@ export async function isRosterMember(userId: number): Promise<boolean> {
 
 export type AiMessageWithAuthor = {
   id: number;
+  persona: AiPersona;
   role: "user" | "assistant";
   content: string;
   authorId: number | null;
@@ -672,16 +675,34 @@ export type AiMessageWithAuthor = {
   createdAt: Date;
 };
 
-export async function getAiMessages(limit = 200): Promise<AiMessageWithAuthor[]> {
+export async function getAiMessages(
+  persona?: AiPersona,
+  limit = 200
+): Promise<AiMessageWithAuthor[]> {
   const db = await getDb();
   if (!db) return [];
 
-  const rows = await db.select().from(aiMessages).orderBy(aiMessages.id).limit(limit);
+  const query = db
+    .select()
+    .from(aiMessages)
+    .orderBy(aiMessages.id)
+    .limit(limit);
+
+  const rows = persona
+    ? await db
+        .select()
+        .from(aiMessages)
+        .where(eq(aiMessages.persona, persona))
+        .orderBy(aiMessages.id)
+        .limit(limit)
+    : await query;
+
   const allUsers = await db.select().from(users);
   const userMap = new Map(allUsers.map(u => [u.id, u.name ?? null]));
 
   return rows.map(r => ({
     id: r.id,
+    persona: (r.persona as AiPersona) ?? "curation",
     role: r.role,
     content: r.content,
     authorId: r.authorId,
@@ -691,6 +712,7 @@ export async function getAiMessages(limit = 200): Promise<AiMessageWithAuthor[]>
 }
 
 export async function addAiMessage(data: {
+  persona?: AiPersona;
   role: "user" | "assistant";
   content: string;
   authorId?: number | null;
@@ -699,6 +721,7 @@ export async function addAiMessage(data: {
   if (!db) throw new Error("Database not available");
 
   const result = await db.insert(aiMessages).values({
+    persona: data.persona ?? "curation",
     role: data.role,
     content: data.content,
     authorId: data.authorId ?? null,
@@ -706,10 +729,14 @@ export async function addAiMessage(data: {
   return result[0].insertId;
 }
 
-export async function clearAiMessages(): Promise<void> {
+export async function clearAiMessages(persona?: AiPersona): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.delete(aiMessages);
+  if (persona) {
+    await db.delete(aiMessages).where(eq(aiMessages.persona, persona));
+  } else {
+    await db.delete(aiMessages);
+  }
 }
 
 // ===== Resource Library (檔案與資源) =====
