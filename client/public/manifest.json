@@ -1,0 +1,25 @@
+{
+  "name": "創業市集規劃助手",
+  "short_name": "市集規劃",
+  "description": "四人小團隊的市集籌備任務管理工具",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F1E8",
+  "theme_color": "#F5F1E8",
+  "orientation": "portrait-primary",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "/manus-storage/market-planner-icon_c4692859.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/manus-storage/market-planner-icon_c4692859.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
