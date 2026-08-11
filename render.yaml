@@ -8,3 +8,5 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20.18.0
+      - key: DATABASE_URL
+        value: "mysql://31PBZEhPFXLyVbp.e2a108d9e1ae:7HLuq0091df4UYaLpALp@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/Es4BvchFRGcgYYcUzKQNbt?ssl={\"rejectUnauthorized\":true}"

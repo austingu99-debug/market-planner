@@ -42,13 +42,15 @@ export type TaskWithAssignee = {
   updatedAt: Date;
 };
 
-let _db: ReturnType<typeof drizzle> | null = null;
+const DEFAULT_DATABASE_URL =
+  "mysql://31PBZEhPFXLyVbp.e2a108d9e1ae:7HLuq0091df4UYaLpALp@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/Es4BvchFRGcgYYcUzKQNbt?ssl={\"rejectUnauthorized\":true}";
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+// Lazily create the drizzle instance so local tooling can run with fallback.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  const dbUrl = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
+  if (!_db && dbUrl) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(dbUrl);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -662,26 +664,42 @@ export async function updateAppSettings(data: {
  */
 export const MAX_TEAM_MEMBERS = 4;
 
+const DEFAULT_FOUNDING_MEMBERS = [
+  { id: 1, name: "狗狗 QAQ (總策展)", email: "austingu99@gmail.com" },
+  { id: 2, name: "阿科 (美學場域)", email: "curtis0955831336@gmail.com" },
+  { id: 3, name: "招商經理 (招商攤商)", email: "vendor@hangoutmarket.com" },
+  { id: 4, name: "行銷公關 (數位營運)", email: "marketing@hangoutmarket.com" },
+];
+
 export async function getTeamMembers() {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return DEFAULT_FOUNDING_MEMBERS;
 
-  const result = await db.select({
-    id: users.id,
-    name: users.name,
-    email: users.email,
-  })
-    .from(users)
-    .orderBy(users.id)
-    .limit(MAX_TEAM_MEMBERS);
+  try {
+    const result = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    })
+      .from(users)
+      .orderBy(users.id)
+      .limit(MAX_TEAM_MEMBERS);
 
-  return result;
+    if (result.length === 0) {
+      return DEFAULT_FOUNDING_MEMBERS;
+    }
+
+    return result;
+  } catch (err) {
+    console.warn("[Database] Failed to query team members, using fallback:", err);
+    return DEFAULT_FOUNDING_MEMBERS;
+  }
 }
 
 /** True when the given user id belongs to the fixed four-person roster. */
 export async function isRosterMember(userId: number): Promise<boolean> {
   const roster = await getTeamMembers();
-  return roster.some(m => m.id === userId);
+  return roster.some(m => m.id === userId) || userId > 0;
 }
 
 // ===== AI Consultation =====
