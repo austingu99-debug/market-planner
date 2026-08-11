@@ -510,7 +510,7 @@ export default function Home() {
                   ? "全部成員"
                   : selectedAssignee === "mine"
                   ? "只看我的任務"
-                  : members.find(m => m.id === selectedAssignee)?.name || "指定成員"}
+                  : (members.find(m => m.id === selectedAssignee)?.name || "").replace(/\s*[（(\[【][^）)\]】]*[）)\]】]\s*/g, "").trim() || "指定成員"}
                 <ChevronDown className="h-3 w-3 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
@@ -523,11 +523,14 @@ export default function Home() {
                   ✨ 只看我的任務
                 </DropdownMenuItem>
               )}
-              {(members ?? []).map(m => (
-                <DropdownMenuItem key={m.id} onClick={() => setSelectedAssignee(m.id)}>
-                  {m.name || `成員 #${m.id}`}
-                </DropdownMenuItem>
-              ))}
+              {(members ?? []).map(m => {
+                const clean = (m.name || `成員 #${m.id}`).replace(/\s*[（(\[【][^）)\]】]*[）)\]】]\s*/g, "").trim();
+                return (
+                  <DropdownMenuItem key={m.id} onClick={() => setSelectedAssignee(m.id)}>
+                    {clean}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
 

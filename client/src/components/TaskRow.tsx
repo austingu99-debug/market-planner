@@ -113,9 +113,9 @@ export function TaskRow({
         )}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground sm:mt-1">
           {task.assigneeName && (
-            <span className="inline-flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {task.assigneeName}
+            <span className="inline-flex items-center gap-1 rounded-md bg-secondary/60 px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+              <User className="h-3 w-3 text-primary" />
+              {task.assigneeName.replace(/\s*[（(\[【][^）)\]】]*[）)\]】]\s*/g, "").trim()}
             </span>
           )}
           {task.dueDate && (

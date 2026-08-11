@@ -385,7 +385,7 @@ export default function Timeline() {
                 <User className="h-3 w-3" />
                 {selectedAssignee === "all"
                   ? "全部成員"
-                  : members.find(m => m.id === selectedAssignee)?.name || "指定成員"}
+                  : (members.find(m => m.id === selectedAssignee)?.name || "").replace(/\s*[（(\[【][^）)\]】]*[）)\]】]\s*/g, "").trim() || "指定成員"}
                 <ChevronDown className="h-3 w-3 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
@@ -393,11 +393,14 @@ export default function Timeline() {
               <DropdownMenuItem onClick={() => setSelectedAssignee("all")}>
                 全部成員
               </DropdownMenuItem>
-              {(members ?? []).map(m => (
-                <DropdownMenuItem key={m.id} onClick={() => setSelectedAssignee(m.id)}>
-                  {m.name || `成員 #${m.id}`}
-                </DropdownMenuItem>
-              ))}
+              {(members ?? []).map(m => {
+                const clean = (m.name || `成員 #${m.id}`).replace(/\s*[（(\[【][^）)\]】]*[）)\]】]\s*/g, "").trim();
+                return (
+                  <DropdownMenuItem key={m.id} onClick={() => setSelectedAssignee(m.id)}>
+                    {clean}
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
 

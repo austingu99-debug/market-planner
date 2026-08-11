@@ -4,6 +4,7 @@ import { groqParseFile } from "../groq";
 import { getDb } from "../db";
 import { tasks, editions } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { loadLocalDb, saveLocalDb } from "../localStore";
 
 // 草稿任務的 schema（用於 AI 解析結果）
 export const ImportTaskDraftSchema = z.object({
@@ -35,16 +36,29 @@ export const aiImportRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { fileBase64, fileName, editionId } = input;
       const db = await getDb();
-      if (!db) throw new Error("Database not available");
 
-      // 驗證屆次存在
-      const edition = await db
-        .select()
-        .from(editions)
-        .where(eq(editions.id, editionId))
-        .limit(1)
-        .then(r => r[0]);
-      if (!edition) throw new Error("Edition not found");
+      // 驗證屆次存在（本地或遠端）
+      if (db) {
+        try {
+          const edition = await db
+            .select()
+            .from(editions)
+            .where(eq(editions.id, editionId))
+            .limit(1)
+            .then(r => r[0]);
+          if (!edition) throw new Error("Edition not found");
+        } catch (err: any) {
+          if (err.message === "Edition not found") throw err;
+          // DB connection error - check local store
+          const ldb = loadLocalDb();
+          const localEdition = ldb.editions.find(e => e.id === editionId);
+          if (!localEdition) throw new Error("屆次不存在，請重新選擇");
+        }
+      } else {
+        const ldb = loadLocalDb();
+        const localEdition = ldb.editions.find(e => e.id === editionId);
+        if (!localEdition) throw new Error("屆次不存在，請重新選擇");
+      }
 
       // 呼叫 Groq 解析檔案
       const buffer = Buffer.from(fileBase64, "base64");
@@ -81,41 +95,86 @@ export const aiImportRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const { editionId, drafts, selectedIndices } = input;
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
-
-      // 驗證屆次存在
-      const edition = await db
-        .select()
-        .from(editions)
-        .where(eq(editions.id, editionId))
-        .limit(1)
-        .then(r => r[0]);
-      if (!edition) throw new Error("Edition not found");
 
       // 決定要寫入哪些草稿
       const toInsert = selectedIndices
         ? drafts.filter((_d: ImportTaskDraft, i: number) => selectedIndices.includes(i))
         : drafts;
 
-      // 批量插入
-      const inserted = [];
+      const db = await getDb();
+
+      if (db) {
+        try {
+          // 驗證屆次存在
+          const edition = await db
+            .select()
+            .from(editions)
+            .where(eq(editions.id, editionId))
+            .limit(1)
+            .then(r => r[0]);
+          if (!edition) throw new Error("Edition not found");
+
+          // 批量插入到遠端 DB
+          const inserted = [];
+          for (const draft of toInsert) {
+            const result = await db.insert(tasks).values({
+              title: draft.title,
+              description: draft.description || null,
+              category: draft.category,
+              customCategory: draft.category === "other" ? draft.customCategory || null : null,
+              notes: draft.notes || null,
+              cloudLink: draft.cloudLink || null,
+              dueDate: draft.dueDate ? new Date(draft.dueDate) : null,
+              assigneeId: draft.assigneeId || null,
+              status: "pending",
+              editionId,
+              createdById: ctx.user.id,
+            });
+            inserted.push(result);
+          }
+
+          return {
+            success: true,
+            insertedCount: inserted.length,
+            editionId,
+          };
+        } catch (err: any) {
+          if (err.message === "Edition not found") throw err;
+          console.warn("[aiImport] Remote DB failed, falling back to local store:", err);
+        }
+      }
+
+      // Local store fallback
+      const ldb = loadLocalDb();
+      const localEdition = ldb.editions.find(e => e.id === editionId);
+      if (!localEdition) throw new Error("屆次不存在，請重新選擇");
+
+      const now = new Date().toISOString();
+      let nextId = ldb.tasks.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+
       for (const draft of toInsert) {
-        const result = await db.insert(tasks).values({
+        ldb.tasks.push({
+          id: nextId++,
+          editionId,
           title: draft.title,
           description: draft.description || null,
           category: draft.category,
           customCategory: draft.category === "other" ? draft.customCategory || null : null,
           notes: draft.notes || null,
           cloudLink: draft.cloudLink || null,
-          dueDate: draft.dueDate ? new Date(draft.dueDate) : null,
+          dueDate: draft.dueDate ? new Date(draft.dueDate).toISOString() : null,
           assigneeId: draft.assigneeId || null,
           status: "pending",
-          editionId,
+          completedAt: null,
+          completedById: null,
           createdById: ctx.user.id,
+          sortOrder: ldb.tasks.length + 1,
+          createdAt: now,
+          updatedAt: now,
         });
-        inserted.push(result);
       }
+
+      saveLocalDb(ldb);
 
       return {
         success: true,

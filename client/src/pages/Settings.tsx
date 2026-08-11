@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { editionLabel } from "@/lib/edition";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { Check, Copy, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Check, Copy, Loader2, Pencil, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -41,7 +41,20 @@ export default function Settings() {
     utils.editions.invalidate();
     utils.tasks.invalidate();
     utils.resources.invalidate();
+    utils.settings.invalidate();
   };
+
+  const updateMember = trpc.settings.updateMember.useMutation({
+    onSuccess: () => {
+      toast.success("成員暱稱已更新");
+      invalidate();
+    },
+    onError: err => toast.error(err.message || "更新失敗，請再試一次"),
+  });
+
+  const [editingMemberId, setEditingMemberId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
+
 
   const seedTimeline = trpc.settings.seedTimeline.useMutation({
     onSuccess: data => {
@@ -89,10 +102,28 @@ export default function Settings() {
     onError: () => toast.error("刪除失敗，可能仍有任務綁在這一屆"),
   });
 
-  const members = rosterQuery.data?.members ?? [];
-  const remaining = rosterQuery.data?.remaining ?? 0;
-  const maxMembers = rosterQuery.data?.max ?? 4;
+  const [newMemberName, setNewMemberName] = useState("");
+  const [isAddingMember, setIsAddingMember] = useState(false);
 
+  const addMember = trpc.settings.addMember.useMutation({
+    onSuccess: () => {
+      toast.success("成員已新增");
+      setNewMemberName("");
+      setIsAddingMember(false);
+      invalidate();
+    },
+    onError: err => toast.error(err.message || "新增失敗，請再試一次"),
+  });
+
+  const deleteMember = trpc.settings.deleteMember.useMutation({
+    onSuccess: () => {
+      toast.success("成員已移除");
+      invalidate();
+    },
+    onError: () => toast.error("刪除失敗，請再試一次"),
+  });
+
+  const members = rosterQuery.data?.members ?? [];
   const otherEditions = editions.filter(e => e.id !== active?.id && e.taskCount > 0);
 
   return (
@@ -102,7 +133,7 @@ export default function Settings() {
           設定
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          管理各屆市集、活動日期與團隊成員。
+          管理各屆市集、活動日期與團隊成員名稱。
         </p>
       </section>
 
@@ -190,7 +221,7 @@ export default function Settings() {
             <div key={e.id} className="flex items-center gap-3 py-3">
               <button
                 onClick={() => e.id !== active?.id && setActive.mutate({ id: e.id })}
-                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                className="flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer"
               >
                 <Check
                   className={cn(
@@ -214,7 +245,7 @@ export default function Settings() {
               {editions.length > 1 && e.taskCount === 0 && (
                 <button
                   onClick={() => removeEdition.mutate({ id: e.id })}
-                  className="tap-target shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:text-destructive"
+                  className="tap-target shrink-0 rounded-md p-2 text-muted-foreground transition-colors hover:text-destructive cursor-pointer"
                   aria-label="刪除此屆"
                 >
                   <Trash2 className="size-4" />
@@ -281,29 +312,161 @@ export default function Settings() {
 
       {/* Team roster */}
       <section className="rounded-xl border border-border/70 bg-card p-5 sm:p-6">
-        <h2 className="font-serif text-xl font-bold tracking-tight">團隊成員</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          團隊固定 {maxMembers} 位成員。成員登入後會自動加入名單，並可被指派任務。
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-xl font-bold tracking-tight">負責人與成員名單</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              自訂成員純暱稱（如「狗狗 QAQ」、「谷哥」、「阿科」），修改後所有任務與選單立即同步更新。
+            </p>
+          </div>
+        </div>
+
         <div className="mt-4 divide-y divide-border/70">
           {members.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">目前只有你登入過。</p>
+            <p className="py-4 text-sm text-muted-foreground">目前名單載入中⋯⋯</p>
           ) : (
-            members.map(m => (
-              <div key={m.id} className="flex items-center justify-between gap-3 py-3">
-                <span className="text-sm font-medium">{m.name || `成員 ${m.id}`}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {m.email || ""}
-                </span>
-              </div>
-            ))
+            members.map(m => {
+              const displayName = m.name
+                ? m.name.replace(/\s*[（(\[【][^）)\]】]*[）)\]】]\s*/g, "").trim()
+                : `成員 ${m.id}`;
+              const isEditing = editingMemberId === m.id;
+
+              return (
+                <div key={m.id} className="flex items-center justify-between gap-3 py-3">
+                  {isEditing ? (
+                    <div className="flex flex-1 items-center gap-2">
+                      <Input
+                        value={editingName}
+                        onChange={e => setEditingName(e.target.value)}
+                        placeholder="例：谷哥、狗狗 QAQ"
+                        className="h-9 max-w-[220px]"
+                        autoFocus
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && editingName.trim()) {
+                            updateMember.mutate({
+                              id: m.id,
+                              name: editingName.trim(),
+                              email: m.email ?? null,
+                            });
+                            setEditingMemberId(null);
+                          } else if (e.key === "Escape") {
+                            setEditingMemberId(null);
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        className="h-9 px-3"
+                        disabled={!editingName.trim() || updateMember.isPending}
+                        onClick={() => {
+                          if (editingName.trim()) {
+                            updateMember.mutate({
+                              id: m.id,
+                              name: editingName.trim(),
+                              email: m.email ?? null,
+                            });
+                            setEditingMemberId(null);
+                          }
+                        }}
+                      >
+                        <Check className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 px-3"
+                        onClick={() => setEditingMemberId(null)}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">{displayName}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingMemberId(m.id);
+                            setEditingName(displayName);
+                          }}
+                          className="rounded p-1 text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                          title="修改暱稱"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="truncate text-xs text-muted-foreground">
+                          {m.email || ""}
+                        </span>
+                        {members.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => deleteMember.mutate({ id: m.id })}
+                            className="rounded p-1 text-muted-foreground/60 transition-colors hover:text-destructive cursor-pointer"
+                            title="移除此成員"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          {remaining > 0
-            ? `還有 ${remaining} 個名額，把網址分享給其他夥伴，他們登入後就會加入名單。`
-            : `名單已滿（${maxMembers}/${maxMembers}）。之後登入的人仍可瀏覽與勾選，但不會出現在負責人選項中。`}
-        </p>
+
+        {/* Add new custom member */}
+        <div className="mt-4 pt-3 border-t border-border/60">
+          {isAddingMember ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={newMemberName}
+                onChange={e => setNewMemberName(e.target.value)}
+                placeholder="輸入新成員暱稱（例：谷哥、小美）"
+                className="h-10 max-w-xs"
+                autoFocus
+                onKeyDown={e => {
+                  if (e.key === "Enter" && newMemberName.trim()) {
+                    addMember.mutate({ name: newMemberName.trim() });
+                  } else if (e.key === "Escape") {
+                    setIsAddingMember(false);
+                  }
+                }}
+              />
+              <Button
+                disabled={!newMemberName.trim() || addMember.isPending}
+                onClick={() => addMember.mutate({ name: newMemberName.trim() })}
+                className="h-10 px-4"
+              >
+                新增
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAddingMember(false);
+                  setNewMemberName("");
+                }}
+                className="h-10 px-3"
+              >
+                取消
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddingMember(true)}
+              className="h-9 gap-1.5 bg-transparent"
+            >
+              <Plus className="size-3.5" />
+              新增自訂負責人／成員
+            </Button>
+          )}
+        </div>
       </section>
 
       <section className="rounded-xl border border-border/70 bg-card p-5 sm:p-6">

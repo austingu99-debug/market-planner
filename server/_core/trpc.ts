@@ -64,7 +64,7 @@ const requireUser = t.middleware(async opts => {
       activeUser = {
         id: 1,
         openId: "default_founder",
-        name: "狗狗 QAQ (總策展)",
+        name: "狗狗 QAQ",
         email: "austingu99@gmail.com",
         loginMethod: "direct",
         role: "admin",

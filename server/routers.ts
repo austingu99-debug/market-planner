@@ -52,12 +52,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
+        const cleanName = db.formatMemberName(input.name.trim());
         let user = input.userId ? await db.getUserById(input.userId) : null;
         if (!user) {
           try {
             const roster = await db.getTeamMembers();
             const existing = roster.find(
-              m => m.name && m.name.trim().toLowerCase() === input.name.trim().toLowerCase()
+              m => m.name && m.name.trim().toLowerCase() === cleanName.toLowerCase()
             );
             if (existing) {
               user = existing;
@@ -65,7 +66,7 @@ export const appRouter = router({
               const openId = `member_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
               await db.upsertUser({
                 openId,
-                name: input.name.trim(),
+                name: cleanName,
                 email: input.email?.trim() || null,
                 loginMethod: "direct",
                 lastSignedIn: new Date(),
@@ -81,7 +82,7 @@ export const appRouter = router({
           user = {
             id: 1,
             openId: `member_${Date.now()}`,
-            name: input.name.trim(),
+            name: cleanName,
             email: input.email?.trim() || null,
             loginMethod: "direct",
             role: "user" as const,

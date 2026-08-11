@@ -1,23 +1,11 @@
 import { TASK_CATEGORIES, TASK_STATUSES } from "../../drizzle/schema";
 import * as db from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { storagePut } from "../storage";
 
 const categoryEnum = z.enum(TASK_CATEGORIES);
 const statusEnum = z.enum(TASK_STATUSES);
-
-/** Assignees are restricted to the fixed four-person roster. */
-async function assertRosterAssignee(assigneeId: number | null | undefined) {
-  if (assigneeId === null || assigneeId === undefined) return;
-  if (!(await db.isRosterMember(assigneeId))) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "負責人必須是團隊四位成員之一",
-    });
-  }
-}
 
 export const tasksRouter = router({
   /** All tasks for one edition (omit editionId to span every edition). */
@@ -38,7 +26,7 @@ export const tasksRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        title: z.string().min(1).max(255),
+        title: z.string().min(1, "任務名稱不能為空").max(255),
         editionId: z.number().int().nullable().optional(),
         description: z.string().max(2000).optional(),
         category: categoryEnum,
@@ -51,8 +39,7 @@ export const tasksRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      await assertRosterAssignee(input.assigneeId);
-      return db.createTask({
+      const id = await db.createTask({
         title: input.title,
         editionId: input.editionId ?? null,
         description: input.description,
@@ -65,6 +52,7 @@ export const tasksRouter = router({
         status: input.status,
         createdById: ctx.user.id,
       });
+      return { id, success: true } as const;
     }),
 
   update: protectedProcedure

@@ -228,7 +228,12 @@ export function TaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>負責人</Label>
+              <div className="flex items-center justify-between">
+                <Label>負責人</Label>
+                <a href="/settings" target="_blank" className="text-[11px] text-primary/80 hover:underline">
+                  管理成員暱稱
+                </a>
+              </div>
               <Select
                 value={values.assigneeId === null ? NO_ASSIGNEE : String(values.assigneeId)}
                 onValueChange={val =>
@@ -243,11 +248,16 @@ export function TaskDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NO_ASSIGNEE}>未指派</SelectItem>
-                  {members.map(m => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                      {m.name || `成員 ${m.id}`}
-                    </SelectItem>
-                  ))}
+                  {members.map(m => {
+                    const cleanName = m.name
+                      ? m.name.replace(/\s*[（(\[【][^）)\]】]*[）)\]】]\s*/g, "").trim()
+                      : `成員 ${m.id}`;
+                    return (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {cleanName}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
