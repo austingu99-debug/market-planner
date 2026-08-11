@@ -802,6 +802,7 @@ export default function Timeline() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         task={editing}
+        members={members}
         defaultCategory="curation"
         onSubmit={handleSubmit}
       />

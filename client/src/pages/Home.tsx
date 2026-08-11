@@ -857,6 +857,7 @@ export default function Home() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         task={editing}
+        members={members}
         defaultCategory={defaultCategoryForNew}
         onSubmit={handleSubmit}
       />

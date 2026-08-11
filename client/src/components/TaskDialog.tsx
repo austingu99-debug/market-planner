@@ -41,8 +41,10 @@ type TeamMember = { id: number; name: string | null };
 type TaskDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  task?: TaskFormValues | null;
   initial?: TaskFormValues | null;
-  members: TeamMember[];
+  defaultCategory?: TaskCategory;
+  members?: TeamMember[];
   onSubmit: (values: TaskFormValues) => void;
   isPending?: boolean;
 };
@@ -70,15 +72,24 @@ function formatBytes(bytes: number | null): string {
 export function TaskDialog({
   open,
   onOpenChange,
+  task,
   initial,
-  members,
+  defaultCategory = "curation",
+  members: membersProp,
   onSubmit,
   isPending,
 }: TaskDialogProps) {
   const [values, setValues] = useState<TaskFormValues>(EMPTY);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
-  const taskId = initial?.id;
+
+  const teamMembersQuery = trpc.settings.teamMembers.useQuery(undefined, {
+    enabled: open && (!membersProp || membersProp.length === 0),
+  });
+
+  const members = membersProp ?? teamMembersQuery.data ?? [];
+  const currentTask = task ?? initial;
+  const taskId = currentTask?.id;
 
   const attachmentsQuery = trpc.tasks.attachments.useQuery(
     { taskId: taskId ?? 0 },
@@ -105,10 +116,19 @@ export function TaskDialog({
   });
 
   useEffect(() => {
-    if (open) setValues(initial ?? EMPTY);
-  }, [open, initial]);
+    if (open) {
+      if (currentTask) {
+        setValues(currentTask);
+      } else {
+        setValues({
+          ...EMPTY,
+          category: defaultCategory,
+        });
+      }
+    }
+  }, [open, currentTask, defaultCategory]);
 
-  const isEdit = Boolean(initial?.id);
+  const isEdit = Boolean(currentTask?.id);
   const canSubmit = values.title.trim().length > 0 && !isPending;
   const attachments = attachmentsQuery.data ?? [];
 
