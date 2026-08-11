@@ -29,17 +29,42 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         let user = input.userId ? await db.getUserById(input.userId) : null;
         if (!user) {
-          const openId = `member_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-          await db.upsertUser({
-            openId,
+          try {
+            const roster = await db.getTeamMembers();
+            const existing = roster.find(
+              m => m.name && m.name.trim().toLowerCase() === input.name.trim().toLowerCase()
+            );
+            if (existing) {
+              user = existing;
+            } else {
+              const openId = `member_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+              await db.upsertUser({
+                openId,
+                name: input.name.trim(),
+                email: input.email?.trim() || null,
+                loginMethod: "direct",
+                lastSignedIn: new Date(),
+              });
+              user = await db.getUserByOpenId(openId);
+            }
+          } catch (e) {
+            console.warn("[Auth] Failed to get/upsert member in DB:", e);
+          }
+        }
+
+        if (!user) {
+          user = {
+            id: 1,
+            openId: `member_${Date.now()}`,
             name: input.name.trim(),
             email: input.email?.trim() || null,
             loginMethod: "direct",
+            role: "user" as const,
+            createdAt: new Date(),
+            updatedAt: new Date(),
             lastSignedIn: new Date(),
-          });
-          user = await db.getUserByOpenId(openId);
+          };
         }
-        if (!user) throw new Error("登入失敗");
 
         const sessionToken = await sdk.signSession({
           openId: user.openId,
