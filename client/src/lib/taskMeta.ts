@@ -15,7 +15,7 @@ export const CATEGORY_LABELS: Record<TaskCategory, string> = {
   vendor: "招商與攤商關係",
   marketing: "行銷與數位公關",
   operation: "營運執行與物流",
-  other: "自訂",
+  other: "其他自訂",
 };
 
 /** Short code shown as a prefix on each row, echoing the reference design. */
@@ -26,6 +26,55 @@ export const CATEGORY_CODES: Record<TaskCategory, string> = {
   marketing: "行銷公關",
   operation: "營運物流",
   other: "自訂",
+};
+
+/** Harmonized color theme for each category for chips, badges, and progress bars */
+export const CATEGORY_COLORS: Record<
+  TaskCategory,
+  { bg: string; text: string; border: string; bar: string; badge: string }
+> = {
+  curation: {
+    bg: "bg-amber-500/10 dark:bg-amber-500/20",
+    text: "text-amber-700 dark:text-amber-300",
+    border: "border-amber-500/30",
+    bar: "bg-amber-600 dark:bg-amber-400",
+    badge: "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800/50",
+  },
+  design: {
+    bg: "bg-purple-500/10 dark:bg-purple-500/20",
+    text: "text-purple-700 dark:text-purple-300",
+    border: "border-purple-500/30",
+    bar: "bg-purple-600 dark:bg-purple-400",
+    badge: "bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300 dark:border-purple-800/50",
+  },
+  vendor: {
+    bg: "bg-emerald-500/10 dark:bg-emerald-500/20",
+    text: "text-emerald-700 dark:text-emerald-300",
+    border: "border-emerald-500/30",
+    bar: "bg-emerald-600 dark:bg-emerald-400",
+    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/50",
+  },
+  marketing: {
+    bg: "bg-rose-500/10 dark:bg-rose-500/20",
+    text: "text-rose-700 dark:text-rose-300",
+    border: "border-rose-500/30",
+    bar: "bg-rose-600 dark:bg-rose-400",
+    badge: "bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800/50",
+  },
+  operation: {
+    bg: "bg-blue-500/10 dark:bg-blue-500/20",
+    text: "text-blue-700 dark:text-blue-300",
+    border: "border-blue-500/30",
+    bar: "bg-blue-600 dark:bg-blue-400",
+    badge: "bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800/50",
+  },
+  other: {
+    bg: "bg-slate-500/10 dark:bg-slate-500/20",
+    text: "text-slate-700 dark:text-slate-300",
+    border: "border-slate-500/30",
+    bar: "bg-slate-600 dark:bg-slate-400",
+    badge: "bg-slate-100 text-slate-800 dark:bg-slate-900/70 dark:text-slate-300 dark:border-slate-700",
+  },
 };
 
 /**

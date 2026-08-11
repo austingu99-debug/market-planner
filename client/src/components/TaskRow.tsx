@@ -6,9 +6,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { categoryCode, dueTone, formatDate, STATUS_LABELS, STATUS_ORDER } from "@/lib/taskMeta";
+import {
+  CATEGORY_COLORS,
+  categoryCode,
+  dueTone,
+  formatDate,
+  STATUS_LABELS,
+  STATUS_ORDER,
+} from "@/lib/taskMeta";
 import { cn } from "@/lib/utils";
-import { Link2, MoreVertical, Paperclip, Pencil, StickyNote, Trash2, User } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Link2,
+  MoreVertical,
+  Paperclip,
+  Pencil,
+  StickyNote,
+  Trash2,
+  User,
+} from "lucide-react";
 import type { TaskCategory, TaskStatus } from "../../../drizzle/schema";
 
 export type TaskRowData = {
@@ -35,8 +53,7 @@ type TaskRowProps = {
 };
 
 /**
- * A single task row — reference-design layout on desktop
- * (code · title | description | status), stacking into a card on mobile.
+ * A single task row — refined editorial card on mobile and structured table row on desktop.
  */
 export function TaskRow({
   task,
@@ -47,28 +64,36 @@ export function TaskRow({
   showCategory = true,
 }: TaskRowProps) {
   const tone = dueTone(task.dueDate, task.status);
+  const colorTheme = CATEGORY_COLORS[task.category] || CATEGORY_COLORS.other;
 
   return (
     <div
       className={cn(
-        "group relative bg-card transition-colors duration-200",
-        "px-4 py-4 sm:px-6 sm:py-4",
-        "sm:grid sm:grid-cols-[minmax(11rem,17rem)_1fr_auto] sm:items-center sm:gap-6",
-        task.status === "done" && "bg-card/70"
+        "group relative bg-card transition-all duration-200 hover:bg-card/90",
+        "px-4 py-4 sm:px-6 sm:py-4.5",
+        "sm:grid sm:grid-cols-[minmax(12rem,18rem)_1fr_auto] sm:items-center sm:gap-6",
+        task.status === "done" && "bg-card/60 opacity-80 hover:opacity-100"
       )}
     >
-      {/* Left: category code + title */}
-      <div className="flex items-baseline gap-2 min-w-0">
+      {/* Left: category badge + title */}
+      <div className="flex items-center gap-2.5 min-w-0">
         {showCategory && (
-          <span className="shrink-0 text-[0.7rem] font-semibold tracking-[0.08em] text-muted-foreground">
+          <span
+            className={cn(
+              "shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[0.6875rem] font-semibold tracking-wide border shadow-xs",
+              colorTheme.badge
+            )}
+          >
             {categoryCode(task.category, task.customCategory)}
           </span>
         )}
         <h3
+          onClick={() => onEdit(task)}
           className={cn(
-            "font-serif text-[1.0625rem] font-semibold leading-snug tracking-tight sm:text-base",
-            task.status === "done" && "text-muted-foreground"
+            "cursor-pointer font-serif text-[1.0625rem] font-semibold leading-snug tracking-tight hover:text-primary transition-colors sm:text-base truncate",
+            task.status === "done" && "line-through text-muted-foreground decoration-border"
           )}
+          title={task.title}
         >
           {task.title}
         </h3>
