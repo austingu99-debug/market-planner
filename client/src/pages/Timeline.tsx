@@ -83,6 +83,17 @@ export default function Timeline() {
     },
   });
 
+  const seedTimeline = trpc.settings.seedTimeline.useMutation({
+    onSuccess: data => {
+      toast.success(`成功匯入 ${data.count} 項官方藍圖任務！`);
+      utils.tasks.list.invalidate(scope);
+      utils.tasks.stats.invalidate(scope);
+      utils.editions.list.invalidate();
+      utils.resources.invalidate();
+    },
+    onError: err => toast.error(err.message || "匯入失敗，請再試一次"),
+  });
+
   const allTasks = tasksQuery.data ?? [];
   const tasks = useMemo(
     () => (view === "mine" ? allTasks.filter(t => t.assigneeId === user?.id) : allTasks),
@@ -173,8 +184,16 @@ export default function Timeline() {
         <section className="rounded-xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
           <p className="font-serif text-lg font-semibold">時間軸上還沒有任務</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            在「總覽」新增任務並填入截止日期，就會出現在這裡。
+            在「總覽」新增任務並填入截止日期，或直接匯入市集官方執行藍圖。
           </p>
+          <button
+            onClick={() => seedTimeline.mutate({ editionId: editionId ?? undefined })}
+            disabled={seedTimeline.isPending}
+            className="tap-target mt-5 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            <Sparkles className="size-4" />
+            {seedTimeline.isPending ? "匯入中…" : "一鍵匯入官方藍圖 (56 項)"}
+          </button>
         </section>
       ) : (
         <div className="space-y-9">

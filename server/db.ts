@@ -939,6 +939,75 @@ export async function deleteResourceItem(id: number): Promise<void> {
 
 // ===== Team Roster & Settings =====
 
+import { OFFICIAL_TIMELINE_TASKS, OFFICIAL_RESOURCE_FOLDERS } from "./seedData";
+
+export async function seedOfficialTimeline(editionId?: number | null, createdById?: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  // Check if edition exists; if not, create the default edition
+  let targetEditionId = editionId;
+  if (!targetEditionId) {
+    const active = await getActiveEdition();
+    if (active) {
+      targetEditionId = active.id;
+    } else {
+      targetEditionId = await createEdition({
+        name: "咻一下市集 第一屆【商模初綻與品牌落地】",
+        eventDate: new Date("2027-02-27"),
+        note: "05-06月商模建立、07-08月法律營運、09-10月資源開發、11-01月招商行銷衝刺、02-03月正式舉行與復盤",
+        createdById: createdById ?? 1,
+      });
+    }
+  }
+
+  // Insert all tasks from OFFICIAL_TIMELINE_TASKS
+  for (const item of OFFICIAL_TIMELINE_TASKS) {
+    await db.insert(tasks).values({
+      title: item.title,
+      editionId: targetEditionId,
+      description: item.description ?? null,
+      category: item.category,
+      customCategory: null,
+      notes: item.notes ?? null,
+      cloudLink: null,
+      assigneeId: null,
+      dueDate: item.dueDate ?? null,
+      status: item.status,
+      createdById: createdById ?? 1,
+      sortOrder: item.sortOrder,
+    });
+  }
+
+  // Also seed resource folders & items if folders are empty
+  try {
+    const existingFolders = await db.select().from(resourceFolders);
+    if (existingFolders.length === 0) {
+      for (const f of OFFICIAL_RESOURCE_FOLDERS) {
+        const folderId = await createResourceFolder({
+          name: f.name,
+          description: f.description,
+          createdById: createdById ?? 1,
+        });
+        for (const it of f.items) {
+          await createResourceItem({
+            folderId,
+            kind: it.kind,
+            title: it.title,
+            linkUrl: it.linkUrl,
+            note: it.note,
+            uploadedById: createdById ?? 1,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[Database] Failed to seed resource folders:", err);
+  }
+
+  return OFFICIAL_TIMELINE_TASKS.length;
+}
+
 export const MAX_TEAM_MEMBERS = 4;
 
 export async function getTeamMembers() {

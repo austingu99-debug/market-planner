@@ -30,4 +30,12 @@ export const settingsRouter = router({
       remaining: Math.max(0, db.MAX_TEAM_MEMBERS - members.length),
     };
   }),
+
+  /** Seed official timeline tasks into active edition. */
+  seedTimeline: protectedProcedure
+    .input(z.object({ editionId: z.number().int().optional() }).optional())
+    .mutation(async ({ input, ctx }) => {
+      const count = await db.seedOfficialTimeline(input?.editionId, ctx.user.id);
+      return { count } as const;
+    }),
 });

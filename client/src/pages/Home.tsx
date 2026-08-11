@@ -124,6 +124,15 @@ export default function Home() {
     onError: err => toast.error(err.message || "刪除失敗，請再試一次"),
   });
 
+  const seedTimeline = trpc.settings.seedTimeline.useMutation({
+    onSuccess: data => {
+      toast.success(`成功匯入 ${data.count} 項官方藍圖任務！`);
+      invalidateAll();
+      utils.resources.invalidate();
+    },
+    onError: err => toast.error(err.message || "匯入失敗，請再試一次"),
+  });
+
   const allTasks = tasksQuery.data ?? [];
   const visibleTasks = useMemo(
     () => (view === "mine" ? allTasks.filter(t => t.assigneeId === user?.id) : allTasks),
@@ -365,10 +374,20 @@ export default function Home() {
               : "從新增第一項籌備工作開始，例如「確認市集報名截止日」。"}
           </p>
           {view === "all" && (
-            <Button onClick={openCreate} className="mt-6 h-11 tap-target">
-              <Plus className="mr-1.5 h-4 w-4" />
-              新增第一項任務
-            </Button>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Button
+                onClick={() => seedTimeline.mutate({ editionId: editionId ?? undefined })}
+                disabled={seedTimeline.isPending}
+                className="h-11 tap-target"
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                {seedTimeline.isPending ? "匯入中…" : "一鍵匯入官方藍圖 (56 項)"}
+              </Button>
+              <Button variant="outline" onClick={openCreate} className="h-11 bg-transparent tap-target">
+                <Plus className="mr-1.5 h-4 w-4" />
+                手動新增任務
+              </Button>
+            </div>
           )}
         </section>
       ) : (
