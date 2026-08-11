@@ -19,6 +19,7 @@ import {
   LogOut,
   Settings,
   Sparkles,
+  Trash2,
   UserCheck,
   UserPlus,
   Users,
@@ -51,6 +52,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const teamRosterQuery = trpc.auth.teamRoster.useQuery(undefined, {
     enabled: !user,
+  });
+
+  const deleteMemberMutation = trpc.auth.deleteMember.useMutation({
+    onSuccess: () => {
+      toast.success("成員帳號已刪除");
+      teamRosterQuery.refetch();
+    },
+    onError: () => toast.error("刪除失敗，請再試一次"),
   });
 
   const loginMutation = trpc.auth.loginAsMember.useMutation({
@@ -111,40 +120,61 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Existing Roster Quick Login */}
           {roster.length > 0 && (
             <div className="mt-6 space-y-2.5">
-              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                選擇團隊成員身分
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  選擇團隊成員身分
+                </p>
+                <span className="text-[11px] text-muted-foreground">
+                  點擊進入 · 垃圾桶可刪除多餘帳號
+                </span>
+              </div>
               <div className="grid gap-2">
                 {roster.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => handleMemberLogin(m.id, m.name || undefined, m.email)}
-                    disabled={loginMutation.isPending}
-                    className="tap-target group flex w-full items-center justify-between rounded-2xl border border-border/70 bg-background px-4 py-3 text-left transition-all hover:border-foreground/40 hover:bg-accent/40 disabled:opacity-60"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="h-9 w-9 border border-border">
-                        <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
-                          {m.name?.charAt(0).toUpperCase() ?? "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">
-                          {m.name || "未命名成員"}
-                        </p>
-                        {m.email && (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {m.email}
+                  <div key={m.id} className="group relative flex items-center">
+                    <button
+                      onClick={() => handleMemberLogin(m.id, m.name || undefined, m.email)}
+                      disabled={loginMutation.isPending}
+                      className="tap-target flex w-full items-center justify-between rounded-2xl border border-border/70 bg-background px-4 py-3 text-left transition-all hover:border-foreground/40 hover:bg-accent/40 disabled:opacity-60 pr-12 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-9 w-9 border border-border shrink-0">
+                          <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+                            {m.name?.charAt(0).toUpperCase() ?? "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {m.name || "未命名成員"}
                           </p>
-                        )}
+                          {m.email && (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {m.email}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
-                      <span>進入</span>
-                      <LogIn className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </div>
-                  </button>
+                      <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground shrink-0">
+                        <span>進入</span>
+                        <LogIn className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      </div>
+                    </button>
+
+                    {/* Delete account button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`確定要刪除「${m.name || "此成員"}」這個帳號嗎？`)) {
+                          deleteMemberMutation.mutate({ id: m.id });
+                        }
+                      }}
+                      title={`刪除 ${m.name || "成員"} 帳號`}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-2 text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
