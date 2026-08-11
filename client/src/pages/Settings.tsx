@@ -279,38 +279,6 @@ export default function Settings() {
         </section>
       )}
 
-      {/* Official Timeline Import Card */}
-      <section className="rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1.5">
-            <h2 className="font-serif text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              匯入市集官方執行藍圖（56 項完整清單）
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              依據 Google 試算表藍圖：涵蓋 05-06月商模建立、07-08月法律營運、09-10月資源開發、11-01月招商行銷衝刺、02-03月正式舉行與復盤、04月細節落地與供應商確認，並建立官方資源專區。
-            </p>
-          </div>
-          <Button
-            disabled={seedTimeline.isPending}
-            onClick={() => seedTimeline.mutate({ editionId: active?.id })}
-            className="shrink-0 h-11 px-5 rounded-xl tap-target"
-          >
-            {seedTimeline.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                匯入中…
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                一鍵匯入時間軸
-              </>
-            )}
-          </Button>
-        </div>
-      </section>
-
       {/* Team roster */}
       <section className="rounded-xl border border-border/70 bg-card p-5 sm:p-6">
         <h2 className="font-serif text-xl font-bold tracking-tight">團隊成員</h2>

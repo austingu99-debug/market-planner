@@ -375,17 +375,15 @@ export default function Home() {
           </p>
           {view === "all" && (
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <Button
-                onClick={() => seedTimeline.mutate({ editionId: editionId ?? undefined })}
-                disabled={seedTimeline.isPending}
-                className="h-11 tap-target"
-              >
-                <Sparkles className="mr-1.5 h-4 w-4" />
-                {seedTimeline.isPending ? "匯入中…" : "一鍵匯入官方藍圖 (56 項)"}
-              </Button>
-              <Button variant="outline" onClick={openCreate} className="h-11 bg-transparent tap-target">
+              <Button onClick={openCreate} className="h-11 tap-target">
                 <Plus className="mr-1.5 h-4 w-4" />
-                手動新增任務
+                新增第一項任務
+              </Button>
+              <Button variant="outline" asChild className="h-11 bg-transparent tap-target">
+                <a href="/ai-import">
+                  <Sparkles className="mr-1.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  AI 智能檔案匯入
+                </a>
               </Button>
             </div>
           )}

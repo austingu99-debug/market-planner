@@ -186,14 +186,21 @@ export default function Timeline() {
           <p className="mt-2 text-sm text-muted-foreground">
             在「總覽」新增任務並填入截止日期，或直接匯入市集官方執行藍圖。
           </p>
-          <button
-            onClick={() => seedTimeline.mutate({ editionId: editionId ?? undefined })}
-            disabled={seedTimeline.isPending}
-            className="tap-target mt-5 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            <Sparkles className="size-4" />
-            {seedTimeline.isPending ? "匯入中…" : "一鍵匯入官方藍圖 (56 項)"}
-          </button>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="/"
+              className="tap-target inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              前往總覽新增任務
+            </a>
+            <a
+              href="/ai-import"
+              className="tap-target inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+            >
+              <Sparkles className="size-4 text-amber-600 dark:text-amber-400" />
+              AI 智能檔案匯入
+            </a>
+          </div>
         </section>
       ) : (
         <div className="space-y-9">
